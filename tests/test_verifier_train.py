@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 
 from fakes import TINY_RECIPE, TINY_VERIFIER, sudoku_dataset, tiny_trm_checkpoint
-from ics.checkpoint import save_checkpoint, sha256
+from ics.checkpoint import save_checkpoint
 from ics.cli import main
 from ics.config import merge_config
 from ics.data import Pool
@@ -118,8 +118,7 @@ def test_the_verifier_trains_from_its_solver_and_is_selected_by_val_auc(tmp_path
     expected = json.loads((solver / "config.json").read_text())["model"]
     assert saved["model"] == {**expected, "halt_max_steps": 2, "batch_size": 4}      # the solver's, at depth T = 2
     provenance = saved["provenance"]
-    assert provenance["eval_split"] == "val" and not provenance["ema"] and provenance["init_sha256"] == sha256(
-        solver / "model.safetensors")
+    assert provenance["eval_split"] == "val" and not provenance["ema"]
     assert provenance["deterministic"] and provenance["recipe"]["train"]["deterministic"]       # the recipe's mode
     state = torch.load(tmp_path / "run" / "state.pt", weights_only=True)
     assert state["ema"] == {} and torch.equal(load_trm(tmp_path / "run" / "last").inner.q_head.weight,
@@ -217,9 +216,8 @@ def test_pick_verifier_keeps_the_run_with_the_highest_val_auc(runs, tmp_path, ca
     assert (out / "model.safetensors").read_bytes() == (runs[1] / "best" / "model.safetensors").read_bytes()
     load_trm(out)                                                       # strictly
     steps = [best(run)["provenance"]["step"] for run in runs]
-    assert picked == {"chosen": 1, "candidates": [{"run": f"v{s}", "seed": s, "step": steps[s], "auc": aucs[s],
-                                                   "sha256": sha256(run / "best" / "model.safetensors")}
-                                                  for s, run in enumerate(runs)]}
+    assert picked == {"chosen": 1, "candidates": [{"run": f"v{s}", "seed": s, "step": steps[s], "auc": aucs[s]}
+                                                  for s in range(len(runs))]}
     width = len(str(runs[0]))
     assert capsys.readouterr().out.splitlines() == [
         f"{'run':{width}}  seed    step  val AUC",
@@ -242,13 +240,11 @@ def test_the_runs_may_differ_in_the_seed_and_in_the_number_of_ranks(runs, tmp_pa
 
 @pytest.mark.parametrize("change, differ", [
     (lambda meta: meta["provenance"].update(task="maze"), "task"),
-    (lambda meta: meta["provenance"]["train_sha256"].update(labels="0" * 64), "train_sha256.labels"),
-    (lambda meta: meta["provenance"].update(init_sha256="0" * 64), "init_sha256"),
     (lambda meta: meta["provenance"].update(eval_boards=1), "eval_boards"),
     (lambda meta: meta["provenance"]["recipe"]["optim"].update(lr=1.0), "optim.lr"),
     (lambda meta: meta["provenance"]["recipe"]["train"].update(deterministic=False), "train.deterministic"),
     (lambda meta: meta["model"].update(halt_max_steps=3), "model.halt_max_steps"),
-], ids=["task", "train-data", "init", "eval-pool", "optim", "train", "model"])
+], ids=["task", "eval-pool", "optim", "train", "model"])
 def test_runs_that_differ_in_more_than_the_seed_are_refused(runs, tmp_path, change, differ):
     edit(runs[2], change)
     error = f"{runs[2]} and {runs[0]} differ in {differ}: pick among runs that differ in train.seed alone"

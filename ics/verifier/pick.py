@@ -7,7 +7,7 @@ import json
 import shutil
 from pathlib import Path
 
-from ics.checkpoint import CONFIG_FILE, WEIGHTS_FILE, sha256
+from ics.checkpoint import CONFIG_FILE, WEIGHTS_FILE
 from ics.trm.model import load_trm
 
 
@@ -22,9 +22,9 @@ def _flat(d: dict, prefix: str = "") -> dict:
 def pick_verifier(runs, out) -> dict:
     """The verifier among training runs (python -m ics train --model verifier) that differ in train.seed alone: the
     run whose best/ has the highest AUC on its data's val split; on a tie the lower seed, then the earlier run. Runs
-    that differ in anything else (task, train split, init, eval pool, recipe, model but batch_size) are refused before
-    anything is written. The chosen best/ is written to `out`, its provenance with "picked": the candidates (directory
-    name, seed, step, AUC, the weights' sha256) and the index of the one chosen. Returns that record."""
+    that differ in the task, eval pool, recipe or model (but batch_size) are refused before anything is written. The
+    chosen best/ is written to `out`, its provenance with "picked": the candidates (directory name, seed, step, AUC)
+    and the index of the one chosen. Returns that record."""
     paths, metas = [Path(run) for run in runs], []
     if not paths:
         raise ValueError("pick a verifier among one run or more")
@@ -44,7 +44,7 @@ def pick_verifier(runs, out) -> dict:
     def shared(meta: dict) -> dict:                 # what the runs must have in common
         prov = meta["provenance"]
         train = {k: v for k, v in prov["recipe"]["train"].items() if k != "seed"}
-        return _flat({**{k: prov[k] for k in ("task", "train_sha256", "init_sha256", "eval_split", "eval_boards")},
+        return _flat({**{k: prov[k] for k in ("task", "eval_split", "eval_boards")},
                       "optim": prov["recipe"]["optim"], "train": train,
                       "model": {k: v for k, v in meta["model"].items() if k != "batch_size"}})
 
@@ -55,8 +55,8 @@ def pick_verifier(runs, out) -> dict:
             raise ValueError(f"{path} and {paths[0]} differ in {', '.join(differ)}: pick among runs that differ in "
                              f"train.seed alone")
     candidates = [{"run": path.resolve().name, "seed": meta["provenance"]["recipe"]["train"]["seed"],
-                   "step": meta["provenance"]["step"], "auc": meta["provenance"]["auc"],
-                   "sha256": sha256(path / "best" / WEIGHTS_FILE)} for path, meta in zip(paths, metas)]
+                   "step": meta["provenance"]["step"], "auc": meta["provenance"]["auc"]}
+                  for path, meta in zip(paths, metas)]
     chosen = min(range(len(paths)), key=lambda i: (-candidates[i]["auc"], candidates[i]["seed"], i))
     picked = {"candidates": candidates, "chosen": chosen}
     out = Path(out)

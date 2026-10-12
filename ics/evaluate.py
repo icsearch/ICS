@@ -23,7 +23,6 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from ics.checkpoint import WEIGHTS_FILE, sha256
 from ics.config import check_settings, load_yaml, merge_config
 from ics.data import Pool, check_dims, load_pool
 from ics.methods.ics import ICSConfig, run_ics
@@ -151,8 +150,6 @@ def evaluate(method: str, task_name: str, ckpt, data, out_dir, *, regimes=REGIME
         raise FileExistsError(f"{out / stem}.npz or .json exists; pass overwrite=True (--overwrite) to replace it")
     model = _for_dataset(spec.load(ckpt, device, dtype), ckpt, pool.meta)
     verifier_model = _for_dataset(load_trm(verifier, device, dtype), verifier, pool.meta) if uses_verifier else None
-    weights = {"ckpt_sha256": sha256(Path(ckpt) / WEIGHTS_FILE),
-               "verifier_sha256": sha256(Path(verifier) / WEIGHTS_FILE) if uses_verifier else None}
     t0 = time.time()
     if method == "ics":
         answers = _ics(model, verifier_model, task_name, pool, plans)
@@ -160,7 +157,7 @@ def evaluate(method: str, task_name: str, ckpt, data, out_dir, *, regimes=REGIME
         answers = spec.run(model, make_task(task_name, pool), **{k: v for k, v in cfg.items() if k != "rows"})
     gpu = torch.cuda.get_device_name(device) if torch.device(device).type == "cuda" else None
     summary = {"method": method, "task": task_name, "ckpt": str(ckpt),
-               "verifier": str(verifier) if uses_verifier else None, **weights,
+               "verifier": str(verifier) if uses_verifier else None,
                "data": str(data), "start": start, "n": len(pool), "device": str(device), "gpu": gpu,
                "dtype": model.config.forward_dtype, "config": cfg, "seconds": round(time.time() - t0, 1),
                "torch": torch.__version__, "results": summarize(make_task(task_name, pool), answers)}

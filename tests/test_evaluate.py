@@ -1,5 +1,4 @@
 import dataclasses
-import hashlib
 import inspect
 import json
 import re
@@ -176,18 +175,15 @@ def test_maze_routes_its_model_regime_to_the_verifier(maze_setup):
 
 
 def test_the_summary_names_the_gpu_and_the_weights(maze_setup):
-    def sha(ckpt):
-        return hashlib.sha256((ckpt / "model.safetensors").read_bytes()).hexdigest()
-
     small = {"cert": {"levels": 1, "cells": 2, "node_budget": 2, "patience": [21]}, "model": {"T": 2, "verifier_T": 1}}
     s = evaluate("ics", "maze", maze_setup / "solver", maze_setup / "data", maze_setup / "out",
                  verifier=maze_setup / "verifier", overrides=small)
     assert s["gpu"] is None                                             # a CPU run
-    assert s["ckpt_sha256"] == sha(maze_setup / "solver") != s["verifier_sha256"] == sha(maze_setup / "verifier")
-    assert json.loads((maze_setup / "out" / "ics-maze.json").read_text())["ckpt_sha256"] == s["ckpt_sha256"]
+    assert s["ckpt"] == str(maze_setup / "solver") and s["verifier"] == str(maze_setup / "verifier")
+    assert json.loads((maze_setup / "out" / "ics-maze.json").read_text())["verifier"] == s["verifier"]
     s = evaluate("trm", "maze", maze_setup / "solver", maze_setup / "data", maze_setup / "out", overrides={"T": 16},
                  verifier=maze_setup / "verifier")                     # the verifier is not used
-    assert s["verifier"] is s["verifier_sha256"] is None
+    assert s["verifier"] is None
 
 
 def test_cli(setup, capsys):

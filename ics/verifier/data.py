@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 
 from ics.builders import overlap, token_dtype, write_split
-from ics.checkpoint import CONFIG_FILE, WEIGHTS_FILE, model_section, sha256
+from ics.checkpoint import CONFIG_FILE, model_section
 from ics.data import Pool, check_dims, dataset_dims, load_pool
 from ics.methods.ics import propose
 from ics.registry import TASKS
@@ -161,7 +161,7 @@ def build_verifier_data(task: str, data, solvers, out, snapshots: int = 10, hypo
             tally += [offer(owners[source == s], ys[source == s]) for s in range(len(SOURCES))]
         provenance = json.loads((ckpt / CONFIG_FILE).read_text())["provenance"]
         summary["solvers"].append({"checkpoint": ckpt.name, "step": provenance.get("step"),
-                                   "sha256": sha256(ckpt / WEIGHTS_FILE), **dict(zip(SOURCES, tally.tolist()))})
+                                   **dict(zip(SOURCES, tally.tolist()))})
         print(json.dumps({**summary["solvers"][-1], "seconds": round(time.time() - t0, 1)}), flush=True)
         del solver
     cut, splits = n - summary["val_boards"], {}

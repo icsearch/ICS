@@ -7,7 +7,6 @@ load_checkpoint refuses a missing or unknown config field (a checkpoint of anoth
 directory (pass one of its checkpoints, RUN/last), then builds the model and loads the weights strictly."""
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import asdict, fields
 from pathlib import Path
@@ -15,14 +14,6 @@ from pathlib import Path
 import torch
 
 CONFIG_FILE, WEIGHTS_FILE = "config.json", "model.safetensors"
-
-
-def sha256(path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for block in iter(lambda: f.read(1 << 22), b""):
-            h.update(block)
-    return h.hexdigest()
 
 
 def save_checkpoint(state_dict: dict, config, out_dir, provenance: dict | None = None) -> None:

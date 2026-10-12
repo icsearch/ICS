@@ -40,7 +40,7 @@ import torch
 import torch.distributed as dist
 from torch import nn
 
-from ics.checkpoint import WEIGHTS_FILE, model_section, save_checkpoint, sha256
+from ics.checkpoint import WEIGHTS_FILE, model_section, save_checkpoint
 from ics.config import check_settings, load_yaml, merge_config
 from ics.data import Pool, check_dims, dataset_dims, load_pool, load_train, train_batches
 from ics.registry import HEADS
@@ -152,12 +152,9 @@ def train(model: str, task: str, data, out, overrides: dict | None = None, devic
                   world=world)
     optimizers, ema = head.optimizers(**cfg["optim"]), EMA(head.model, tc.ema)
     eval_split, pool = _eval_pool(data, tc.eval_boards)
-    digests = {k: sha256(Path(data) / "train" / f"all__{k}.npy") for k in ("inputs", "labels")}
-    init_sha256 = None if init is None else sha256(Path(init) / WEIGHTS_FILE)
-    run = {"model": model, "task": task, "world": world, "recipe": cfg, "train_sha256": digests,
-           "init_sha256": init_sha256}
+    run = {"model": model, "task": task, "world": world, "recipe": cfg}
     provenance = {"format": "train", "model": model, "task": task, "ema": tc.ema > 0, "eval_split": eval_split,
-                  "eval_boards": len(pool), "world": world, "train_sha256": digests, "init_sha256": init_sha256,
+                  "eval_boards": len(pool), "world": world,
                   "torch": torch.__version__, "deterministic": torch.are_deterministic_algorithms_enabled(),
                   "cublas_workspace_config": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
                   "recipe": {"optim": cfg["optim"], "train": asdict(tc)}}
@@ -372,8 +369,8 @@ def _save(out: Path, state: dict, evaluated: nn.Module, provenance: dict, best: 
 def _resume(path: Path, run: dict, head, optimizers, ema: EMA, rank: int, device):
     state = torch.load(path, map_location="cpu", weights_only=True)
     if state["run"] != run:
-        raise ValueError(f"{path} belongs to another run; resuming needs the same model, task, recipe, train split, "
-                         f"init and number of ranks (saved: {state['run']})")
+        raise ValueError(f"{path} belongs to another run; resuming needs the same model, task, recipe and number of "
+                         f"ranks (saved: {state['run']})")
     head.model.load_state_dict(state["model"])
     for (opt, _), saved in zip(optimizers, state["optimizers"]):
         opt.load_state_dict(saved)

@@ -12,7 +12,6 @@ import ics.data
 import ics.train
 from conftest import DATA_DIRS
 from fakes import TINY_RECIPE, Stop, assert_identical, interrupted, stop, sudoku_dataset
-from ics.checkpoint import sha256
 from ics.config import merge_config
 from ics.data import IGNORE, load_train, train_batches
 from ics.registry import HEADS, TASKS
@@ -107,8 +106,6 @@ def test_a_run_writes_release_checkpoints_the_state_and_a_log(tmp_path):
         torch.testing.assert_close(model.state_dict()[name], value, rtol=0, atol=0)
     provenance = json.loads((out / "last" / "config.json").read_text())["provenance"]
     assert provenance["step"] == 6 and provenance["ema"] and provenance["format"] == "train"
-    data = {k: sha256(tmp_path / "data" / "train" / f"all__{k}.npy") for k in ("inputs", "labels")}
-    assert provenance["train_sha256"] == state["run"]["train_sha256"] == data
     assert sorted(p.name for p in out.iterdir()) == ["last", "log.jsonl", "state.pt"]   # no best/: scored on test
 
 
@@ -184,14 +181,11 @@ def test_two_deterministic_runs_are_bit_equal(tmp_path):
            (tmp_path / "b" / "last" / "model.safetensors").read_bytes()
 
 
-def test_resuming_with_another_recipe_or_other_data_is_refused(tmp_path):
+def test_resuming_with_another_recipe_is_refused(tmp_path):
     run(tmp_path)
     for change in ({"seed": 1}, {"deterministic": True}):
         with pytest.raises(ValueError, match="belongs to another run"):
             run(tmp_path, train=change)
-    other = sudoku_dataset(tmp_path / "other", seed=1)                # the same shapes, other boards
-    with pytest.raises(ValueError, match="belongs to another run"):
-        train("trm", "sudoku", other, tmp_path / "run", TINY_RECIPE, device="cpu")
 
 
 def test_rerunning_a_finished_run_says_so_and_returns_its_result(tmp_path, capsys):
@@ -377,12 +371,10 @@ def test_a_run_from_a_checkpoint_starts_from_its_weights_and_config(tmp_path):
                 device="cpu", init=init)
     assert out["step"] == 2
     a, b = (json.loads((d / "config.json").read_text()) for d in (init, tmp_path / "second" / "last"))
-    assert a["model"] == b["model"] and b["provenance"]["init_sha256"] == sha256(init / "model.safetensors")
+    assert a["model"] == b["model"]
     assert not b["provenance"]["ema"]
     second = load_trm(tmp_path / "second" / "last").state_dict()                # no EMA: the live weights, unmoved
     assert all(torch.equal(second[name], value) for name, value in load_trm(init).state_dict().items())
-    with pytest.raises(ValueError, match="belongs to another run"):                    # the init is part of the run
-        train("trm", "sudoku", tmp_path / "data", tmp_path / "second", merge_config(TINY_RECIPE, frozen), device="cpu")
 
 
 @pytest.mark.parametrize("edit, error", [
