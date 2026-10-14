@@ -1,6 +1,9 @@
 # ICS: Input-Conditioned Search
 
-Paper: https://arxiv.org/abs/2610.18547 · Project page: https://icsearch.github.io · Weights: https://huggingface.co/hcshi/ICS
+[![arXiv](https://img.shields.io/badge/arXiv-2610.18547-b31b1b)](https://arxiv.org/abs/2610.18547)
+[![Project page](https://img.shields.io/badge/Project%20page-icsearch.github.io-1f6feb)](https://icsearch.github.io)
+[![Weights](https://img.shields.io/badge/%F0%9F%A4%97%20Weights-hcshi%2FICS-ffd21e)](https://huggingface.co/hcshi/ICS)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2ea043)](LICENSE)
 
 A recursive reasoner, such as the [Tiny Recursive Model (TRM)](https://arxiv.org/abs/2510.04871), solves a problem by
 iterating a learned update map on a latent state, so its reasoning is a dynamical system. Test-time compute can run the
