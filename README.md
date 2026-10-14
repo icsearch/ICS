@@ -1,5 +1,7 @@
 # ICS: Input-Conditioned Search
 
+Paper: https://arxiv.org/abs/2610.18547 · Project page: https://icsearch.github.io · Weights: https://huggingface.co/hcshi/ICS
+
 A recursive reasoner, such as the [Tiny Recursive Model (TRM)](https://arxiv.org/abs/2510.04871), solves a problem by
 iterating a learned update map on a latent state, so its reasoning is a dynamical system. Test-time compute can run the
 map longer (depth) or perturb the state (width), but a trajectory that settles into an incorrect attractor can stay
@@ -12,7 +14,7 @@ Can we train reasoners whose dynamics are easier to steer toward correct solutio
 search find good dynamics with less compute, by changing the input, the weights, or both?
 
 This repository holds ICS, TRM, the baselines of the paper's main table (PTRM, GRAM, EqR, Attractor) with their
-training, and the builders of the six puzzle datasets. Project page: https://icsearch.github.io
+training, and the builders of the six puzzle datasets.
 
 ## Install
 
@@ -118,7 +120,14 @@ tests/             pytest; ICS_DATA_ROOT=data also runs the data tests on the da
 
 ## Citation
 
-The BibTeX entry will appear here once the paper is public.
+```bibtex
+@article{shi2026ics,
+  title   = {Input-Conditioned Search for Efficient Test-Time Scaling of Recursive Reasoners},
+  author  = {Haochen Shi and Tianwen Fu and Qianggang Ding and Yinhan Lu and Yizhan Li and Huan Zhang and Yajie Zhao and Xingdi Yuan and Hengyang Lu and Bang Liu},
+  journal = {arXiv preprint arXiv:2610.18547},
+  year    = {2026}
+}
+```
 
 ## License
 
